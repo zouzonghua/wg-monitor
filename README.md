@@ -16,6 +16,7 @@
 - `wg-monitor.service` - systemd 服务单元文件
 - `wg-monitor.timer` - systemd 定时器文件
 - `install.sh` - 自动安装脚本
+- `uninstall.sh` - 自动卸载脚本
 
 ## 快速开始
 
@@ -156,6 +157,26 @@ sudo systemctl disable wg-monitor.timer
 - 可以通过修改脚本中的 `MAX_LOG_LINES` 参数调整保留的行数
 
 ## 卸载
+
+### 使用卸载脚本（推荐）
+
+```bash
+# 赋予执行权限
+chmod +x uninstall.sh
+
+# 运行卸载脚本
+sudo ./uninstall.sh
+```
+
+卸载脚本会：
+- 停止并禁用 systemd timer 和 service
+- 删除所有安装的文件
+- 询问是否删除日志文件（可选择保留）
+- 重载 systemd 配置
+
+### 手动卸载
+
+如果没有 `uninstall.sh` 脚本，可以手动卸载：
 
 ```bash
 # 停止并禁用服务

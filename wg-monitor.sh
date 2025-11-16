@@ -9,7 +9,7 @@ WG_INTERFACE="wg0"
 
 # 服务端 WireGuard 内网 IP (用于 ping 测试)
 # 请修改为你的阿里云服务端的 WireGuard 内网 IP
-SERVER_IP="10.0.0.1"
+SERVER_IP="10.100.10.1"
 
 # ping 超时时间（秒）
 PING_TIMEOUT=5
@@ -65,21 +65,14 @@ check_root() {
     fi
 }
 
-# 检查 WireGuard 接口是否存在
+# 检查 WireGuard 接口是否存在并运行
 check_interface_exists() {
-    if ! ip link show "$WG_INTERFACE" &>/dev/null; then
-        log "ERROR: WireGuard 接口 $WG_INTERFACE 不存在"
+    # 使用 wg show 检查接口，这是最直接准确的方法
+    if ! wg show "$WG_INTERFACE" &>/dev/null; then
+        log "ERROR: WireGuard 接口 $WG_INTERFACE 不存在或未运行"
         return 1
     fi
-    return 0
-}
-
-# 检查接口是否 UP
-check_interface_up() {
-    if ! ip link show "$WG_INTERFACE" | grep -q "state UP"; then
-        log "WARNING: WireGuard 接口 $WG_INTERFACE 状态不是 UP"
-        return 1
-    fi
+    verbose_log "WireGuard 接口 $WG_INTERFACE 运行正常"
     return 0
 }
 
@@ -160,32 +153,17 @@ main() {
 
     verbose_log "========== 开始 WireGuard 连接检查 =========="
 
-    # 检查接口是否存在
+    # 检查接口是否存在并运行（使用 wg show）
     if ! check_interface_exists; then
-        log "ERROR: 接口不存在，跳过检查"
         exit 1
     fi
 
-    # 检查接口状态
-    local interface_ok=true
-    if ! check_interface_up; then
-        interface_ok=false
-    fi
+    # 检查握手时间（仅作为参考信息，不影响重启决策）
+    check_handshake
 
-    # 检查握手时间
-    local handshake_ok=true
-    if ! check_handshake; then
-        handshake_ok=false
-    fi
-
-    # Ping 测试
-    local ping_ok=true
+    # Ping 测试 - 这是判断连接是否正常的唯一标准
+    # 只有 Ping 失败才会触发重启
     if ! check_ping; then
-        ping_ok=false
-    fi
-
-    # 判断是否需要重启
-    if [ "$interface_ok" = false ] || [ "$handshake_ok" = false ] || [ "$ping_ok" = false ]; then
         log "检测到连接问题，准备重启 WireGuard"
         restart_wireguard
 
