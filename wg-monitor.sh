@@ -65,11 +65,20 @@ check_root() {
     fi
 }
 
-# 检查 WireGuard 接口是否存在并运行
-check_interface_exists() {
-    # 使用 wg show 检查接口，这是最直接准确的方法
+# 检查 WireGuard 配置文件是否存在
+check_config_exists() {
+    if [ ! -f "/etc/wireguard/${WG_INTERFACE}.conf" ]; then
+        log "ERROR: WireGuard 配置文件 /etc/wireguard/${WG_INTERFACE}.conf 不存在"
+        log "请先配置 WireGuard 接口后再运行监控脚本"
+        return 1
+    fi
+    return 0
+}
+
+# 检查 WireGuard 接口是否运行
+check_interface_running() {
+    # 使用 wg show 检查接口是否运行
     if ! wg show "$WG_INTERFACE" &>/dev/null; then
-        log "ERROR: WireGuard 接口 $WG_INTERFACE 不存在或未运行"
         return 1
     fi
     verbose_log "WireGuard 接口 $WG_INTERFACE 运行正常"
@@ -153,9 +162,27 @@ main() {
 
     verbose_log "========== 开始 WireGuard 连接检查 =========="
 
-    # 检查接口是否存在并运行（使用 wg show）
-    if ! check_interface_exists; then
+    # 检查配置文件是否存在
+    if ! check_config_exists; then
         exit 1
+    fi
+
+    # 检查接口是否运行
+    if ! check_interface_running; then
+        log "WARNING: WireGuard 接口 $WG_INTERFACE 未运行"
+        log "尝试启动 WireGuard 接口..."
+        restart_wireguard
+
+        # 等待启动
+        sleep 5
+
+        # 再次检查接口
+        if ! check_interface_running; then
+            log "ERROR: WireGuard 接口启动失败，请手动检查"
+            exit 1
+        fi
+
+        log "WireGuard 接口已成功启动"
     fi
 
     # 检查握手时间（仅作为参考信息，不影响重启决策）
