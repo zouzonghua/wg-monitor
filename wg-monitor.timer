@@ -1,0 +1,12 @@
+[Unit]
+Description=WireGuard Connection Monitor Timer
+Requires=wg-monitor.service
+
+[Timer]
+# 每 2 分钟检查一次
+OnBootSec=1min
+OnUnitActiveSec=2min
+AccuracySec=10s
+
+[Install]
+WantedBy=timers.target
